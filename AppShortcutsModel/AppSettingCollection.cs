@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -13,6 +13,14 @@ namespace AppShortcuts
         private const string DataFileName = "Settings.xml";
         private const string TempDataFileName = "TempSettings.xml";
 
+        private int NewItemCount
+        {
+            get
+            {
+                return this.Count(m => m.IsNew);
+            }
+        }
+
         #region 读取
 
         public AppSettingCollection(string fileName = DataFileName)
@@ -26,6 +34,7 @@ namespace AppShortcuts
 
                 foreach (var item in result.OrderBy(i => i.AppName))
                 {
+                    item.IsNew = false;
                     this.Add(item);
                 }
             }
@@ -47,6 +56,10 @@ namespace AppShortcuts
                 p.WaitForExit();
                 if (p.ExitCode == 0)
                 {
+                    foreach (var item in this)
+                    {
+                        item.IsNew = false;
+                    }
                     this.SaveToXml();
                 }
 
@@ -85,7 +98,7 @@ namespace AppShortcuts
             //建立新的文件夹
             Directory.CreateDirectory(ShortcutDir);
             var newAppSettings = new AppSettingCollection(TempDataFileName);
-            foreach (var item in new AppSettingCollection(TempDataFileName))
+            foreach (var item in newAppSettings)
             {
                 //创建 Shortcut 文件
                 var shortcut = CreateShortcut(item);
@@ -172,6 +185,27 @@ namespace AppShortcuts
             }
 
             return scFile;
+        }
+
+        #endregion
+
+
+        #region 增加
+
+        /// <summary>
+        /// 在顶层插入多个
+        /// </summary>
+        /// <param name="filterDistinct">是否过滤重复项</param>
+        /// <param name="exePathData"></param>
+        public void InsertMany(bool filterDistinct = true, params string[] exePathData)
+        {
+            int i = NewItemCount;
+            var paths = this.Select(m => m.ExePath.Trim());
+            var toInsert = exePathData.Reverse().Where(m => !paths.Contains(m.Trim()));
+            foreach (var item in toInsert)
+            {
+                Insert(0, new AppSetting(AppSetting.DefaultAppName + ++i, item));
+            };
         }
 
         #endregion
