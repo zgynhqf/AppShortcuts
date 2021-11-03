@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
+using WindowsShortcutFactory;
 
 namespace AppShortcuts
 {
@@ -138,6 +139,55 @@ namespace AppShortcuts
         }
 
         private static string CreateShortcut(AppSetting item)
+        {
+            var targetPath = item.ExePath;
+
+            string scFile = GetShortcutsFile(item);
+            scFile = ToAbsolute(scFile);
+
+            var shortcut = new WindowsShortcut();
+
+            var quota = "\"";
+            //如果是以下格式：
+            //"C:\Documents and Settings\huqf\桌面\Shortcuts\GIX4Clients.exe" gpm
+            if (targetPath.StartsWith(quota) && !targetPath.EndsWith(quota))
+            {
+                var exe = targetPath.Substring(1);
+                var args = exe.Substring(exe.IndexOf(quota) + 1).Trim();
+                exe = exe.Remove(exe.IndexOf(quota));
+                if (File.Exists(exe))
+                {
+                    shortcut.Arguments = args;
+                    shortcut.Path = exe;
+                    shortcut.WorkingDirectory = Path.GetDirectoryName(exe);
+                }
+            }
+            else if (File.Exists(targetPath))
+            {
+                shortcut.Path = targetPath;
+                shortcut.WorkingDirectory = Path.GetDirectoryName(targetPath);
+            }
+            else
+            {
+                shortcut.Path = targetPath;
+            }
+
+            shortcut.ShowCommand = ProcessWindowStyle.Normal;
+            shortcut.Description = "快捷专家 - " + item.AppName;
+            //shortcut.IconLocation = System.Environment.SystemDirectory + "\\" + "shell32.dll, 165";
+            try
+            {
+                shortcut.Save(scFile);
+            }
+            catch
+            {
+                return null;
+            }
+
+            return scFile;
+        }
+
+        private static string CreateShortcut2(AppSetting item)
         {
             var targetPath = item.ExePath;
 
